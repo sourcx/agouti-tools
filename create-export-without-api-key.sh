@@ -1,4 +1,4 @@
-```sh
+#!/bin/bash
 
 # This script shows how to create an export without using an API key.
 
