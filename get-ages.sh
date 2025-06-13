@@ -10,7 +10,7 @@ if [[ -f ".api_url" ]]; then
   API_URL="$(<.api_url)"
 fi
 
-API_KEY=`cat .apikey`
+API_KEY=`cat .api_key`
 
 if [[ -z "${API_URL}" ]]; then
   echo "API_URL must be set."
