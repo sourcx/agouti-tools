@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # This script shows the usage of an API key for the Agouti API.
 # You can request one from the admins.
