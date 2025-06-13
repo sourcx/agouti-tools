@@ -5,6 +5,11 @@ set -e
 # You can request one from the admins.
 
 API_URL="http://localhost:5001"
+
+if [[ -f ".api_url" ]]; then
+  API_URL="$(<.api_url)"
+fi
+
 API_KEY=`cat .apikey`
 
 if [[ -z "${API_URL}" ]]; then

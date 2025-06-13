@@ -5,8 +5,13 @@ set -e
 # You can request one from the admins.
 
 API_URL="http://localhost:5001"
+
+if [[ -f ".api_url" ]]; then
+  API_URL="$(<.api_url)"
+fi
+
 API_KEY=`cat .apikey`
-PROJECT_ID="00000000-0000-0000-0000-000000000000"
+PROJECT_ID="0922a347-264f-4e8e-bb4a-f6b74229f07f"
 
 if [[ -z "${API_URL}" ]]; then
   echo "API_URL must be set."
@@ -35,12 +40,12 @@ curl -sS $url \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "deployments-filtered-on-start.csv" \
+  -o "output/deployments.csv" \
   -w "Status code %{http_code}\n"
 
 ## Filter on deploymentId as comma-separated list
 
-url="${API_URL}/project/${PROJECT_ID}/deployments.csv?deploymentId=00000000-0000-0000-0000-000000000001,00000000-0000-0000-0000-000000000002"
+url="${API_URL}/project/${PROJECT_ID}/deployments.csv?deploymentId=e43ceedb-2a8e-45d1-a7e6-8577dd5444f9,f5918597-20a7-4743-ac9c-3a255d8ddb49"
 echo "Calling "$url
 
 curl -sS $url \
@@ -48,12 +53,12 @@ curl -sS $url \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "deployments-filtered-on-start.csv" \
+  -o "output/deployments-filtered-on-id.csv" \
   -w "Status code %{http_code}\n"
 
 ## Filter on deploymentStart as ISO 8601 date-time
 
-url = "${API_URL}/project/${PROJECT_ID}/deployments.csv?deploymentStart=2025-05-23T09:15:00+01:00"
+url="${API_URL}/project/${PROJECT_ID}/deployments.csv?deploymentStart=2025-05-23T09:15:00+01:00"
 echo "Calling "$url
 
 curl -sS $url \
@@ -61,7 +66,7 @@ curl -sS $url \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "deployments-filtered-on-start.csv" \
+  -o "output/deployments-filtered-on-start.csv" \
   -w "Status code %{http_code}\n"
 
 ## Filter on locationName as comma-separated list
@@ -74,7 +79,7 @@ curl -sS $url \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "deployments-filtered-on-location.csv" \
+  -o "output/deployments-filtered-on-location.csv" \
   -w "Status code %{http_code}\n"
 
 # Observations
@@ -84,17 +89,17 @@ curl -sS $url \
 url="${API_URL}/project/${PROJECT_ID}/observations.csv"
 echo "Calling "$url
 
-curl -sS $url
+curl -sS $url \
   -X GET \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "observations.csv" \
+  -o "output/observations.csv" \
   -w "Status code %{http_code}\n"
 
 ## Filter on deploymentID as comma-separated list
 
-url="${API_URL}/project/${PROJECT_ID}/observations.csv?deploymentId=00000000-0000-0000-0000-000000000001,00000000-0000-0000-0000-000000000002"
+url="${API_URL}/project/${PROJECT_ID}/observations.csv?deploymentId=e43ceedb-2a8e-45d1-a7e6-8577dd5444f9,f5918597-20a7-4743-ac9c-3a255d8ddb49"
 echo "Calling "$url
 
 curl -sS $url \
@@ -102,7 +107,7 @@ curl -sS $url \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "observations-filtered-on-deployment.csv" \
+  -o "output/observations-filtered-on-deployment.csv" \
   -w "Status code %{http_code}\n"
 
 ## Filter on eventStart as ISO 8601 date-time
@@ -115,7 +120,7 @@ curl -sS $url \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "observations-filtered-on-start.csv" \
+  -o "output/observations-filtered-on-start.csv" \
   -w "Status code %{http_code}\n"
 
 # Media (not implemented yet)
@@ -126,5 +131,5 @@ curl -sS "${API_URL}/project/${PROJECT_ID}/media.csv" \
   -H "Accept: application/json" \
   -H "Content-Type: application/vnd.api+json" \
   -H "X-API-KEY: ${API_KEY}" \
-  -o "media.csv" \
+  -o "output/media.csv" \
   -w "Status code %{http_code}\n"
