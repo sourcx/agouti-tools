@@ -1,5 +1,3 @@
 .apikey
-deployments.csv
-media.csv
-observations.csv
+*.csv
 tmp
