@@ -3,8 +3,8 @@
 Personal utilities for working with the Agouti API.
 
 [get-ages.sh](get-ages.sh) - a script to get the all ages using the API.\
-[export-project.sh](export-project.sh) - create an export of a project (optionally filtered), wait for it and download it, with curl.\
-[export-project.py](export-project.py) - the same in Python, which can also write the observations per deployment.
+[create-export.sh](create-export.sh) - create an export of a project (optionally filtered), wait for it and download it, with curl.\
+[create-export.py](create-export.py) - the same in Python, which can also write the observations per deployment.
 
 The scripts read the API address from `.api_url` and the API key from `.api_key` (both git-ignored; any file
 matching `.api_key*` is ignored, so keys like `.api_key_frank_prod` can sit next to it). Both can be overridden
@@ -25,9 +25,9 @@ All calls authenticate with the `X-API-KEY` header, and the key's user must be a
 the project.
 
 ```bash
-./export-project.sh <projectId>                  # the complete project, unpacked into output/export-<projectId>
-API_KEY_FILE=.api_key_frank_prod ./export-project.sh <projectId> my-output-dir
-python export-project.py <projectId>             # needs `pip install requests`
+./create-export.sh <projectId>                  # the complete project, unpacked into output/export-<projectId>
+API_KEY_FILE=.api_key_frank_prod ./create-export.sh <projectId> my-output-dir
+python create-export.py <projectId>             # needs `pip install requests`
 ```
 
 ### Options
@@ -90,7 +90,7 @@ Compared with the CSV downloads:
 
 ## Deprecated
 
-[create-export.sh](create-export.sh) is **deprecated**. It downloads CSV files directly, and Agouti is replacing those
+[create-export-deprecated.sh](create-export-deprecated.sh) is **deprecated**. It downloads CSV files directly, and Agouti is replacing those
 routes with the exports above:
 
 - The `/project/{id}/*.csv` and `/projects/{id}/*.csv` paths this script calls are already removed, they answer
@@ -98,5 +98,5 @@ routes with the exports above:
 - The `/v1/projects/{id}/camtrap-dp/1.0.2/*.csv` routes, their replacement, are deprecated since 19 November 2026 and
   answer 410 (gone) after 30 June 2027. Until then every response has `Deprecation` and `Sunset` headers.
 
-Use [export-project.sh](export-project.sh) or [export-project.py](export-project.py) instead. The old script stays
+Use [create-export.sh](create-export.sh) or [create-export.py](create-export.py) instead. The old script stays
 for reference only.

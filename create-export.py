@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Create a Camtrap DP export of an Agouti project, wait until it is ready and download it.
 
-Replaces the deprecated create-export*.sh scripts, which used the CSV routes of the API.
+Replaces create-export-deprecated.sh, which used the CSV routes of the API.
 The export is created asynchronously and takes a few minutes. The zip is unpacked into the
 output directory (default output/export-<projectId>): datapackage.json, deployments.csv,
 media.csv and observations.csv.
 
-    python export-project.py <projectId>
-    python export-project.py <projectId> --filters '{"deploymentIds": ["<id>"]}'
-    python export-project.py <projectId> --events-only --split-by-deployment
+    python create-export.py <projectId>
+    python create-export.py <projectId> --filters '{"deploymentIds": ["<id>"]}'
+    python create-export.py <projectId> --events-only --split-by-deployment
 
 Configuration, from the environment or the same files as the other scripts:
     API_URL        default: the contents of .api_url, else http://localhost:5001

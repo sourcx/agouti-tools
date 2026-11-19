@@ -1,127 +1,119 @@
 #!/usr/bin/env bash
+# Create a Camtrap DP export of an Agouti project, wait until it is ready and download it.
+# Replaces create-export-deprecated.sh, which used the CSV routes of the API.
+#
+# Usage: ./create-export.sh <projectId> [outputDir]
+#
+# The export is created asynchronously and takes a few minutes. The zip is unpacked into
+# outputDir (default output/export-<projectId>): datapackage.json, deployments.csv,
+# media.csv and observations.csv.
+#
+# Configuration, from the environment or the same files as the other scripts:
+#   API_URL          default: the contents of .api_url, else http://localhost:5001
+#   API_KEY_FILE     file with the X-API-KEY, default .api_key (e.g. .api_key_frank_prod)
+#   RETENTION        how long the server keeps the zip: 1d (default), 7d, 30d or infinite
+#   FILTERS          export filters as JSON, default {} (the complete project), for example
+#                    '{"deploymentIds": ["<id>"]}' or '{"dateRange": {"start": "2025-05-23"}}'
+#   POLL_SECONDS     seconds between status checks, default 15
+#   TIMEOUT_SECONDS  give up after this many seconds, default 1800
+#
+# Needs curl, jq and unzip. The key's user must be admin, maintainer or coordinator of the project.
 set -euo pipefail
 
-# DEPRECATED: this script downloads CSV files directly, with routes of the Agouti API that are
-# removed (/project/{id}/*.csv answers 501) or going away (/v1/projects/{id}/camtrap-dp/*/*.csv
-# answers 410 after 2027-06-30). Use export-project.sh or export-project.py instead, see README.md.
-echo "DEPRECATED: $0 uses CSV routes of the Agouti API that are removed or going away." \
-  "Use export-project.sh instead, see README.md." >&2
+PROJECT_ID="${1:-}"
+if [[ -z "$PROJECT_ID" ]]; then
+  echo "Usage: $0 <projectId> [outputDir]" >&2
+  exit 2
+fi
+OUTPUT_DIR="${2:-output/export-$PROJECT_ID}"
 
-# Load configuration
-API_URL="http://localhost:5001"
-[[ -f ".api_url" ]] && API_URL="$(<.api_url)"
-API_KEY="$(<.api_key)"
-PROJECT_ID="0922a347-264f-4e8e-bb4a-f6b74229f07f"
-
-# Ensure required vars
-for var in API_URL API_KEY PROJECT_ID; do
-  if [[ -z "${!var}" ]]; then
-    echo "$var must be set." >&2
-    exit 1
-  fi
+for tool in curl jq unzip; do
+  command -v "$tool" >/dev/null || { echo "$tool is required." >&2; exit 2; }
 done
 
-# Create output directory
-mkdir -p output
+# Load configuration
+if [[ -z "${API_URL:-}" ]]; then
+  API_URL="http://localhost:5001"
+  [[ -f ".api_url" ]] && API_URL="$(<.api_url)"
+fi
+API_KEY="$(<"${API_KEY_FILE:-.api_key}")"
+RETENTION="${RETENTION:-1d}"
+FILTERS="${FILTERS:-}"
+[[ -n "$FILTERS" ]] || FILTERS='{}'
+POLL_SECONDS="${POLL_SECONDS:-15}"
+TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-1800}"
 
-echo "Using API_URL: $API_URL"
+BASE="$API_URL/v1/projects/$PROJECT_ID/exports"
+BODY="$(jq -n --arg retention "$RETENTION" --argjson filters "$FILTERS" '{retention: $retention, filters: $filters}')"
+START=$SECONDS
 
-echo "# Fetch all deployments"
-fetch_all_deployments() {
-  local url="$API_URL/project/$PROJECT_ID/deployments.csv"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/deployments.csv" \
-    -w "Status code %{http_code}\n"
+call() {
+  curl -sS -H "X-API-KEY: $API_KEY" -H "Accept: application/json" "$@"
 }
 
-fetch_deployments_by_id() {
-  local url="$API_URL/project/$PROJECT_ID/deployments.csv?deploymentID=e43ceedb-2a8e-45d1-a7e6-8577dd5444f9,f5918597-20a7-4743-ac9c-3a255d8ddb49"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/deployments-filtered-on-id.csv" \
-    -w "Status code %{http_code}\n"
+check_timeout() {
+  if (( SECONDS - START >= TIMEOUT_SECONDS )); then
+    echo "Gave up after $TIMEOUT_SECONDS seconds." >&2
+    exit 1
+  fi
 }
 
-fetch_deployments_by_start() {
-  local url="$API_URL/project/$PROJECT_ID/deployments.csv?deploymentStart=2025-05-23T09:15:00+01:00"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/deployments-filtered-on-start.csv" \
-    -w "Status code %{http_code}\n"
+create_export() {
+  echo "Using API_URL: $API_URL" >&2
+  while true; do
+    local response code json
+    response="$(call -X POST -H 'Content-Type: application/json' -d "$BODY" -w $'\n%{http_code}' "$BASE")"
+    code="${response##*$'\n'}"
+    json="${response%$'\n'*}"
+    case "$code" in
+      202)
+        jq -r .id <<<"$json"
+        return
+        ;;
+      409)
+        echo "Another export of this project is running, waiting..." >&2
+        ;;
+      *)
+        echo "Could not create the export (HTTP $code): $(jq -r '.message // .' <<<"$json" 2>/dev/null || echo "$json")" >&2
+        exit 1
+        ;;
+    esac
+    check_timeout
+    sleep "$POLL_SECONDS"
+  done
 }
 
-fetch_deployments_by_location() {
-  local url="$API_URL/project/$PROJECT_ID/deployments.csv?locationName=WAG-01,Test1,123"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/deployments-filtered-on-location.csv" \
-    -w "Status code %{http_code}\n"
+wait_until_completed() {
+  local export_id="$1" record status
+  while true; do
+    record="$(call -f "$BASE/$export_id")"
+    status="$(jq -r .status <<<"$record")"
+    case "$status" in
+      Completed)
+        jq -r '"Export completed: \(.deploymentsCount) deployments, \(.mediaCount) media, \(.observationsCount) observations"' <<<"$record" >&2
+        return
+        ;;
+      Error | Expired)
+        echo "Export $status: $(jq -r '.error // empty' <<<"$record")" >&2
+        exit 1
+        ;;
+    esac
+    echo "Export $status..." >&2
+    check_timeout
+    sleep "$POLL_SECONDS"
+  done
 }
 
-fetch_all_observations() {
-  local url="$API_URL/project/$PROJECT_ID/observations.csv"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/observations.csv" \
-    -w "Status code %{http_code}\n"
-}
-
-fetch_observations_by_deployment() {
-  local url="$API_URL/project/$PROJECT_ID/observations.csv?deploymentID=05799f29-fa71-4f68-ae57-f74e6e71e397,a326e571-5e51-4f53-a01f-ab33027a7241"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/observations-filtered-on-deployment.csv" \
-    -w "Status code %{http_code}\n"
-}
-
-fetch_observations_by_start() {
-  local url="$API_URL/project/$PROJECT_ID/observations.csv?eventStart=2022-01-01T12:00:00.000Z"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/observations-filtered-on-start.csv" \
-    -w "Status code %{http_code}\n"
-}
-
-fetch_observations_by_deployment_and_start() {
-  local url="$API_URL/project/$PROJECT_ID/observations.csv?deploymentID=a326e571-5e51-4f53-a01f-ab33027a7241&eventStart=2022-01-01T12:00:00.000Z"
-  echo "Calling $url"
-  curl -sS "$url" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/vnd.api+json" \
-    -H "X-API-KEY: $API_KEY" \
-    -o "output/observations-filtered-on-deployment-and-start.csv" \
-    -w "Status code %{http_code}\n"
+download_export() {
+  local export_id="$1"
+  mkdir -p "$OUTPUT_DIR"
+  call -f -o "$OUTPUT_DIR/export.zip" "$BASE/$export_id/archive"
+  unzip -o -q "$OUTPUT_DIR/export.zip" -d "$OUTPUT_DIR"
+  echo "Downloaded to $OUTPUT_DIR" >&2
 }
 
 # Main execution
-fetch_all_deployments
-fetch_deployments_by_id
-fetch_deployments_by_start
-fetch_deployments_by_location
-
-fetch_all_observations
-fetch_observations_by_deployment
-fetch_observations_by_start
-fetch_observations_by_deployment_and_start
+EXPORT_ID="$(create_export)"
+echo "Created export $EXPORT_ID (kept for $RETENTION after it completes)" >&2
+wait_until_completed "$EXPORT_ID"
+download_export "$EXPORT_ID"
