@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# DEPRECATED: this script downloads CSV files directly, with routes of the Agouti API that are
+# removed (/project/{id}/*.csv answers 501) or going away (/v1/projects/{id}/camtrap-dp/*/*.csv
+# answers 410 after 2027-06-30). Use export-project.sh or export-project.py instead, see README.md.
+echo "DEPRECATED: $0 uses CSV routes of the Agouti API that are removed or going away." \
+  "Use export-project.sh instead, see README.md." >&2
+
 # Load configuration
 API_URL="http://localhost:5001"
 [[ -f ".api_url" ]] && API_URL="$(<.api_url)"
