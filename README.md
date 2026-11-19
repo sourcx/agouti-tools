@@ -90,14 +90,13 @@ Compared with the CSV downloads:
 
 ## Deprecated
 
-[create-export.sh](create-export.sh), and its variants `create-export-acc.sh`, `create-export-prd.sh` and
-`create-export-local.sh`, are **deprecated**. They download CSV files directly, and Agouti is replacing those routes
-with the exports above:
+[create-export.sh](create-export.sh) is **deprecated**. It downloads CSV files directly, and Agouti is replacing those
+routes with the exports above:
 
-- The `/project/{id}/*.csv` and `/projects/{id}/*.csv` paths these scripts call are already removed, they answer
+- The `/project/{id}/*.csv` and `/projects/{id}/*.csv` paths this script calls are already removed, they answer
   501 (not implemented).
 - The `/v1/projects/{id}/camtrap-dp/1.0.2/*.csv` routes, their replacement, are deprecated since 19 November 2026 and
   answer 410 (gone) after 30 June 2027. Until then every response has `Deprecation` and `Sunset` headers.
 
-Use [export-project.sh](export-project.sh) or [export-project.py](export-project.py) instead. The old scripts stay
+Use [export-project.sh](export-project.sh) or [export-project.py](export-project.py) instead. The old script stays
 for reference only.
